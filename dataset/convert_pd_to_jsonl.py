@@ -16,11 +16,16 @@ if __name__ == '__main__':
                         help='split ratio of development set for each language')
     args = parser.parse_args()
 
-    gpt2_tok = GPT2Tokenizer.from_pretrained("gpt2", do_lower_case=False)
-    languages = ['Python', 'Java', 'Javascript']
-    segments = {}
+
+    # languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']
+    languages = ['php', None]
+
 
     for lang in languages:
+
+        gpt2_tok = GPT2Tokenizer.from_pretrained("gpt2", do_lower_case=False)
+
+        segments = {}
 
         path = lang + '.pkl'
         print('Reading pkl ' + path)
@@ -54,9 +59,12 @@ if __name__ == '__main__':
         with open(os.path.join(to_path, "train.jsonl"), "w") as f:
             #without this for loop, we get a MemoryError
             for item in train:
-                f.write("\n".join(item))
+                f.write("\n" + item)
 
         print('writing dev.jsonl')
         with open(os.path.join(to_path, "dev.jsonl"), "w") as f:
             for item in dev:
-                f.write("\n".join(dev))
+                f.write("\n" + item)
+
+        del gpt2_tok
+

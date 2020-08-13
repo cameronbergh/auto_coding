@@ -106,12 +106,13 @@ def remove_duplicate_code_df(df: pd.DataFrame) -> pd.DataFrame:
 
 def run(args):
 
-    langs = ['Python', 'Javascript']
+    langs = ['Python', 'Javascript', 'Java', 'Php', 'Ruby', 'Go']
 
     for lang in langs:
 
-        input_path = RichPath.create('/home/cameron/PycharmProjects/auto_coding/dataset/csn_data/' + str(lang).lower() + '/final/jsonl/train')
-        #input_path = RichPath.create('/media/cameron/angelas files/codesearchnet/resources/data/java/final/jsonl/train')
+        lang = lang.lower()
+
+        input_path = RichPath.create('/mnt/md0/datasets/codesearchnet/' + str(lang).lower() + '/final/jsonl/train')
 
         # get data and process it
         df = jsonl_to_df(input_path)

@@ -22,7 +22,7 @@ if __name__ == '__main__':
                         help='model select from distilgpt2, gpt2_medium, gpt2, or gpt2_large')
     parser.add_argument('--dataset_name', type=str, default="source_code",
                         help='dataset name whatever name you put into the ./dataset directory (by default: source_code)')
-    parser.add_argument('--per_gpu_train_batch_size', type=int, default=4,
+    parser.add_argument('--per_gpu_train_batch_size', type=int, default=1,
                         help='input batch size for training')
     parser.add_argument('--dev_batch_size', type=int, default=8,
                         help='input batch size for development')
@@ -42,9 +42,9 @@ if __name__ == '__main__':
                         help='random seed')
     parser.add_argument('--accumulation_steps', type=int, default=1,
                         help='accumulation steps if you want large batch size but can not fit in the memory allowed')
-    parser.add_argument('--n_gpu', type=int, default=1,
+    parser.add_argument('--n_gpu', type=int, default=2,
                         help='number of gpu for training')
-    parser.add_argument('--visiable_device', type=str, default="0",
+    parser.add_argument('--visiable_device', type=str, default="0,1",
                         help='visiable gpus for training, should be consistent with n_gpu')
     parser.add_argument('--evaluation_steps', type=int, default=200,
                         help='evaluation_steps')
@@ -59,9 +59,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     logger.info(f"args: {args}")
-    dataset_folder = f"dataset/{args.dataset_name}/json/"
+    dataset_folder = f"/home/cameron/PycharmProjects/auto_coding/dataset/{args.dataset_name}/json/"
     assert args.model_select in MODEL_MAP.keys(), (f"model has to be in {MODEL_MAP.keys()}")
-    output_path = f"model/{args.model_select}_fine_tuned_coder"
+    output_path = f"./model/{args.model_select}_fine_tuned_coder"
     logger.info("{} for dataset in: {}".format(output_path, dataset_folder))
     logger.info(
         f"*****************model select: {args.model_select} for code generation using dataset: {args.dataset_name}******************")
