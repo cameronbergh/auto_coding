@@ -67,18 +67,31 @@ if __name__ == '__main__':
         f"*****************model select: {args.model_select} for code generation using dataset: {args.dataset_name}******************")
     # add more params for wandb
     args.wandb_run_name = output_path
+
     #initialize model by model name (the same as used in transformers lib)
     model = GPTSingleHead(MODEL_MAP[args.model_select], max_seq_length=args.max_seq_length)
+
     #add special tokens for controlling code generation by different programming language
-    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<python>", "<java>"]})
+    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<javascript>", "<ruby>"]})
+
+
+
+
+
     #load training dataset
     file_path = dataset_folder + "train.jsonl"
     train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
+
     #load developlemt dataset
     file_path = dataset_folder + "dev.jsonl"
     dev_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "dev"))
+
+
+
     # initialize development evaluator
     dev_evaluator = SingleCLMEvaluator()
+
+
     # initialize model trainer
     model_trainer = ModelTrainer(model,
                                  train_dataset=train_dataset,
