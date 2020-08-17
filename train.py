@@ -13,7 +13,8 @@ MODEL_MAP = {"distilgpt2": "distilgpt2", "gpt2": "gpt2", "gpt2_medium": "gpt2-me
 
 from model import GPTSingleHead
 from trainer import ModelTrainer
-from data import SrcCodeDataset
+from data import DatasetFromPandas, load_pickles, split_data, shuffle_dataset
+
 from evaluate import SingleCLMEvaluator
 
 if __name__ == '__main__':
@@ -78,14 +79,24 @@ if __name__ == '__main__':
 
 
 
-    #load training dataset
-    file_path = dataset_folder + "train.jsonl"
-    train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
+    # #load training dataset
+    # file_path = dataset_folder + "train.jsonl"
+    # train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
+    #
+    # #load developlemt dataset
+    # file_path = dataset_folder + "dev.jsonl"
+    # dev_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "dev"))
+    #
 
-    #load developlemt dataset
-    file_path = dataset_folder + "dev.jsonl"
-    dev_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "dev"))
+    test_ratio = 0.1
+    languages = ['javascript', 'ruby']  # languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']
 
+    df = load_pickles(languages)
+    df = shuffle_dataset(df)
+    train_df, test_df = split_data(df, test_ratio)
+
+    train_dataset = DatasetFromPandas(train_df, model)
+    test_dataset = DatasetFromPandas(test_df, model)
 
 
     # initialize development evaluator
@@ -95,7 +106,7 @@ if __name__ == '__main__':
     # initialize model trainer
     model_trainer = ModelTrainer(model,
                                  train_dataset=train_dataset,
-                                 dev_dataset=dev_dataset,
+                                 dev_dataset=test_dataset,
                                  dev_evaluator=dev_evaluator,
                                  scheduler=args.scheduler,
                                  epochs=args.num_epochs_train,

@@ -93,12 +93,12 @@ class DatasetFromPandas(Dataset):
 
         #make it into a bunch of properly sized sequences
         segments = []
-
-
         for i in range(len(encoded) // self.stride):
             seg = encoded[i * self.stride:i * self.stride + self.segment_len]
             segments.append({"token_ids": seg, "label": lang})
 
+        #if there is more than one sequence made, then pick a random one
+        # (this is done to save memory) #todo: prove doing it this way is okay
         if len(encoded) // self.stride == 0:
             item = [encoded]
         else:
@@ -106,10 +106,10 @@ class DatasetFromPandas(Dataset):
 
         #add special tokens
         encoded_plus = self.model.tokenizer.encode_plus(
-            self.model.tokenize("<" + lang + ">") + item['token_ids'] + [self.model.eos_token_id],
-            max_length=self.model.max_seq_length)
+            self.model.tokenize("<" + lang + ">") + item['token_ids'] + [self.model.eos_token_id])
 
-        del encoded_plus.data['attention_mask'] #remove the attention mask data
+        # remove the attention mask data from the dict
+        del encoded_plus.data['attention_mask']
 
         return encoded_plus.data
 
@@ -133,6 +133,8 @@ if __name__ == '__main__':
 
 
     languages = ['javascript', 'ruby']  # languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']
+
+
     test_ratio = 0.1
 
 
