@@ -13,7 +13,7 @@ MODEL_MAP = {"distilgpt2": "distilgpt2", "gpt2": "gpt2", "gpt2_medium": "gpt2-me
 
 from model import GPTSingleHead
 from trainer import ModelTrainer
-from data import DatasetFromPandas, load_pickles, split_data, shuffle_dataset
+from data import DatasetFromPandas, SrcCodeDataset, load_pickles, split_data, shuffle_dataset
 
 from evaluate import SingleCLMEvaluator
 
@@ -21,6 +21,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyper params')
     parser.add_argument('--model_select', type=str, default="distilgpt2",
                         help='model select from distilgpt2, gpt2_medium, gpt2, or gpt2_large')
+    parser.add_argument('--use_csn_data', type=bool, default=False,
+                        help='dataset name whatever name you put into the ./dataset directory (by default: source_code)')
     parser.add_argument('--dataset_name', type=str, default="source_code",
                         help='dataset name whatever name you put into the ./dataset directory (by default: source_code)')
     parser.add_argument('--per_gpu_train_batch_size', type=int, default=1,
@@ -73,40 +75,38 @@ if __name__ == '__main__':
     model = GPTSingleHead(MODEL_MAP[args.model_select], max_seq_length=args.max_seq_length)
 
     #add special tokens for controlling code generation by different programming language
-    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<javascript>", "<ruby>"]})
+    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<python>", "<javascript>", "<java>", "<php>", "<ruby>", "<go>"]})
 
 
+    if args.use_csn_data:
+        test_ratio = 0.1
 
+        languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']  # languages = ['javascript', 'ruby']
 
+        df = load_pickles(languages)
+        df = shuffle_dataset(df)
 
-    # #load training dataset
-    # file_path = dataset_folder + "train.jsonl"
-    # train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
-    #
-    # #load developlemt dataset
-    # file_path = dataset_folder + "dev.jsonl"
-    # dev_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "dev"))
-    #
+        # do the train/test split
+        train_df, test_df = split_data(df, test_ratio)
+        train_dataset = DatasetFromPandas(train_df, model)
+        dev_dataset = DatasetFromPandas(test_df, model) #todo: find out why this is named dev instead of validation or test
+    else:
+        # load training dataset
+        file_path = dataset_folder + "train.jsonl"
+        train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
 
-    test_ratio = 0.1
-    languages = ['javascript', 'ruby']  # languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']
-
-    df = load_pickles(languages)
-    df = shuffle_dataset(df)
-    train_df, test_df = split_data(df, test_ratio)
-
-    train_dataset = DatasetFromPandas(train_df, model)
-    test_dataset = DatasetFromPandas(test_df, model)
+        # load developlemt dataset
+        file_path = dataset_folder + "dev.jsonl"
+        dev_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "dev"))
 
 
     # initialize development evaluator
     dev_evaluator = SingleCLMEvaluator()
 
-
     # initialize model trainer
     model_trainer = ModelTrainer(model,
                                  train_dataset=train_dataset,
-                                 dev_dataset=test_dataset,
+                                 dev_dataset=dev_dataset,
                                  dev_evaluator=dev_evaluator,
                                  scheduler=args.scheduler,
                                  epochs=args.num_epochs_train,

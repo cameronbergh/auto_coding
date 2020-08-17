@@ -4,6 +4,12 @@ from sklearn.model_selection import train_test_split
 from transformers import GPT2Tokenizer
 import pandas as pd
 
+
+""" 
+this was an attempt to convert codesearchnet into jsonL files but that resulted in too much RAM use, so 
+instead i made the IterableDataset thing. this may be interesting later.
+"""
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Params')
@@ -17,8 +23,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
 
-    # languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']
-    languages = ['php', None]
+    languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']
+    #languages = ['php', None]
 
 
     for lang in languages:
@@ -53,7 +59,7 @@ if __name__ == '__main__':
         if not os.path.isdir(to_path):
             os.makedirs(to_path)
 
-            #todo: this is going to use up TERABYTES of disk
+            #todo: this is going to use TERABYTES of disk
 
         print('writing train.jsonl')
         with open(os.path.join(to_path, "train.jsonl"), "w") as f:

@@ -1,35 +1,18 @@
 #!/usr/bin/env python
-
-# This code is copied and modified from the CodeSearchNet repository (https://github.com/github/CodeSearchNet)
-# CodeSearchNet is provided with the MIT License
-
-# MIT License
-#
-# Copyright (c) 2019 GitHub
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-
 """
-Usage:
-    download_csn.py DESTINATION_DIR
 
-    python download_csn.py ./csn_data/
+    # This code is copied and modified from the CodeSearchNet repository (https://github.com/github/CodeSearchNet)
+    # CodeSearchNet is provided with the MIT License
+
+    this program will download the CodeSearchNet dataset
+
+Usage:
+    download_csn.py --dir DESTINATION_DIR
+
+    example:
+        "python download_csn.py"
+        "python download_csn.py --dir ./csn_data/"
+
 
 Options:
     -h --help   Show this screen.
@@ -37,19 +20,23 @@ Options:
 
 import os
 from subprocess import call
+import argparse
 
-from docopt import docopt
-
-
-#todo: when training language models, there was some paper (i think from google?) that said:
+# when training language models, there was some paper (i think from google?) that said:
 # when training translation models, adding more languages to the model improved its performance
 # on languages that it wasnt even being tested on? or something like that? basically, there is a synergy effect.
 # so it would be neat to find out if that same thing happens with programming languages
 
 if __name__ == '__main__':
-    args = docopt(__doc__)
 
-    destination_dir = os.path.abspath(args['DESTINATION_DIR'])
+    parser = argparse.ArgumentParser(description='Params')
+    parser.add_argument('--dir', type=str, default='./csn_data/',
+                        help='where to save the CodeSearchNet data')
+    args = parser.parse_args()
+
+    print(args)
+
+    destination_dir = os.path.abspath(args.dir)
     if not os.path.exists(destination_dir):
         os.makedirs(destination_dir)
     os.chdir(destination_dir)

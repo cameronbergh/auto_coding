@@ -24,3 +24,13 @@ You will find a train set named train.jsonl and dev set named dev.jsonl under `s
 
 Have a look at the `convert.py` script for the specific process of dataset construction or quickly read [this blog](#). 
 
+
+### Or download and build the CodeSearchNet dataset (https://github.com/github/CodeSearchNet)
+
+The CodeSearchNet dataset is a total of 14+ gigabytes of code from languages: python, javascript, java, php, ruby, go
+```
+python download_csn.py
+python convert_csn.py
+```
+
+

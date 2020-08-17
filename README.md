@@ -62,14 +62,25 @@ pip install -r requirements.txt
 3. Run the interact: `python interact.py`
 
 #### Fine-tuning yours
+
+```
+git clone <this repository>
+pip install -r requirements.txt
+```
+1. Preparing [the dataset](./dataset)
+2. Start fine-tuning model: `python train.py --model_select distilgpt2` 
+3. After fine-tuning, the model will be saved to `./model/distilgpt2_fine_tuned_coder/0_GPTSingleHead` which is exactly the fine-tuned version as provided in Ready-to-go Interaction.
+
+\* For more params setting of training, `python train.py -h`
+
+#### Fine-tuning with the CodeSearchNet dataset
 ```
 git clone <this repository>
 pip install -r requirements.txt
 ```
 
 1. Preparing [the dataset](./dataset)
-2. Start fine-tuning model: `python train.py --model_select distilgpt2` 
-3. After fine-tuning, the model will be saved to `./model/distilgpt2_fine_tuned_coder/0_GPTSingleHead` which is exactly the fine-tuned version as provided in Ready-to-go Interaction.
+2. Start fine-tuning model: `python train.py --use_csn_data True` 
 
 \* For more params setting of training, `python train.py -h`
 
