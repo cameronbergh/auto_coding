@@ -166,13 +166,11 @@ class SrcCodeDataset(Dataset):
             for line in tqdm(f):
                 example = json.loads(line.strip())
 
-                example["label"] = example["label"].lower()
-
-                if example["label"] == "python":
+                if example["label"].lower() == "python":
                     encoded_plus = model.tokenizer.encode_plus(
                         model.tokenize("<python>") + example["token_ids"] + [model.eos_token_id],
                         max_length=model.max_seq_length)
-                elif example["label"] == "java":
+                elif example["label"].lower() == "java":
                     encoded_plus = model.tokenizer.encode_plus(
                         model.tokenize("<java>") + example["token_ids"] + [model.eos_token_id],
                         max_length=model.max_seq_length)
