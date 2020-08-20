@@ -3,6 +3,11 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 from transformers import GPT2Tokenizer
 
+"""
+    this code downloads Python and Java code files from a github repository of Algorithms and then converts 
+    the files into jsonl files to be laoded by the auto_coding train.py program
+"""
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Params')
@@ -34,7 +39,7 @@ if __name__ == '__main__':
     train, dev = [], []
     for key in segments:
         # we don't shuffle before splitting because we want the train and dev to be very different (less overlapping)
-        tr, de = train_test_split(segments[key], test_size=args.dev_size)
+        tr, de = train_test_split(segments[key], dev_size=args.dev_size)
         train += tr
         dev += de
 

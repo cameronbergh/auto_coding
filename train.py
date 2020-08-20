@@ -13,23 +13,26 @@ MODEL_MAP = {"distilgpt2": "distilgpt2", "gpt2": "gpt2", "gpt2_medium": "gpt2-me
 
 from model import GPTSingleHead
 from trainer import ModelTrainer
-from data import SrcCodeDataset
+from data import DatasetFromPandas, SrcCodeDataset, load_pickles, split_data, shuffle_dataset
+
 from evaluate import SingleCLMEvaluator
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyper params')
     parser.add_argument('--model_select', type=str, default="distilgpt2",
                         help='model select from distilgpt2, gpt2_medium, gpt2, or gpt2_large')
+    parser.add_argument('--use_csn_data', type=bool, default=False,
+                        help='dataset name whatever name you put into the ./dataset directory (by default: source_code)')
     parser.add_argument('--dataset_name', type=str, default="source_code",
                         help='dataset name whatever name you put into the ./dataset directory (by default: source_code)')
-    parser.add_argument('--per_gpu_train_batch_size', type=int, default=4,
+    parser.add_argument('--per_gpu_train_batch_size', type=int, default=6,
                         help='input batch size for training')
     parser.add_argument('--dev_batch_size', type=int, default=8,
                         help='input batch size for development')
     parser.add_argument('--num_epochs_train', type=int, default=16,
                         help='number of epochs to train')
     parser.add_argument('--max_seq_length', type=int, default=256,
-                        help='maximum sequence length of samples in a batch for training')
+                        help=' maximum sequence length of samples in a batch for training')
     parser.add_argument('--lr', type=float, default=2e-5,
                         help='learning rate')
     parser.add_argument('--warmup_ratio', type=float, default=0.2,
@@ -46,7 +49,7 @@ if __name__ == '__main__':
                         help='number of gpu for training')
     parser.add_argument('--visiable_device', type=str, default="0",
                         help='visiable gpus for training, should be consistent with n_gpu')
-    parser.add_argument('--evaluation_steps', type=int, default=200,
+    parser.add_argument('--evaluation_steps', type=int, default=1000,
                         help='evaluation_steps')
     parser.add_argument('--wandb_project_name', type=str, default="code_generate",
                         help='project name for wandb')
@@ -67,18 +70,53 @@ if __name__ == '__main__':
         f"*****************model select: {args.model_select} for code generation using dataset: {args.dataset_name}******************")
     # add more params for wandb
     args.wandb_run_name = output_path
+
     #initialize model by model name (the same as used in transformers lib)
     model = GPTSingleHead(MODEL_MAP[args.model_select], max_seq_length=args.max_seq_length)
+
+
+                        # for the smaller model im going to exclude 's' files since those are assembly language and
+                        # that looks incomprehensible to me.
+
     #add special tokens for controlling code generation by different programming language
-    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<python>", "<java>"]})
-    #load training dataset
-    file_path = dataset_folder + "train.jsonl"
-    train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
-    #load developlemt dataset
-    file_path = dataset_folder + "dev.jsonl"
-    dev_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "dev"))
+    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<python>", "<javascript>", "<java>", "<php>", "<ruby>", "<go>", "<c>", "<h>", "<sh>"]})
+
+                        #todo: the <php> tag looks like something that might appear in places we didnt want it to. like <?php>
+                        #   maybe we should change it to something like <{php}> or whatever
+
+    if args.use_csn_data:
+
+        print('using codesearchnet dataset')
+        # todo: put this in the argparser
+
+        dev_ratio = 0.005
+
+        #languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go', 'c', 'h', 'sh']
+        languages = ['c', 'h', 'sh']
+
+        df = load_pickles(languages)
+        df = shuffle_dataset(df)
+
+        # do the train/dev split
+        train_df, dev_df = split_data(df, dev_ratio)
+        train_dataset = DatasetFromPandas(train_df, model)
+        dev_dataset = DatasetFromPandas(dev_df, model)
+    else:
+
+        print('using jsonl dataset')
+
+        # load training dataset
+        file_path = dataset_folder + "train.jsonl"
+        train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
+
+        # load developlemt dataset
+        file_path = dataset_folder + "dev.jsonl"
+        dev_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "dev"))
+
+
     # initialize development evaluator
     dev_evaluator = SingleCLMEvaluator()
+
     # initialize model trainer
     model_trainer = ModelTrainer(model,
                                  train_dataset=train_dataset,

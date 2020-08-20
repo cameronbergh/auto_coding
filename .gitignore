@@ -2,3 +2,5 @@ dataset/source_code/
 model/
 venv/
 .idea/
+/Pipfile
+/Pipfile.lock

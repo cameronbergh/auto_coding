@@ -4,6 +4,10 @@
 
 #### A basic and simple tool for code auto completion, fine-tuned from the pytorch [pre-trained GPT-2 variants](https://huggingface.co/transformers/pretrained_models.html) offered by the awesome [🤗 transformers](https://github.com/huggingface/transformers) library.
 
+### Requirements
+* This has only been tested on ubuntu 20.04 with python 3.8 in pipenv
+* For mutli-GPU training, it only works when torch==1.4.0. It will be not working when torch==1.5.0. No idea so far how to fix this issue.
+
 ### Demo
 ![demo](demo.gif)
 
@@ -62,14 +66,27 @@ pip install -r requirements.txt
 3. Run the interact: `python interact.py`
 
 #### Fine-tuning yours
+
+```
+git clone <this repository>
+pip install -r requirements.txt
+```
+1. Preparing [the dataset](./dataset)
+2. Start fine-tuning model: `python train.py --model_select distilgpt2` 
+3. After fine-tuning, the model will be saved to `./model/distilgpt2_fine_tuned_coder/0_GPTSingleHead` which is exactly the fine-tuned version as provided in Ready-to-go Interaction.
+
+\* For more params setting of training, `python train.py -h`
+
+#### Fine-tuning with the CodeSearchNet dataset
+
+Note: this Dataset object is built to minimize RAM use and so it does the segmenting of the training examples on-the-fly. this introduces a bit of stochasticity in the training.
 ```
 git clone <this repository>
 pip install -r requirements.txt
 ```
 
 1. Preparing [the dataset](./dataset)
-2. Start fine-tuning model: `python train.py --model_select distilgpt2` 
-3. After fine-tuning, the model will be saved to `./model/distilgpt2_fine_tuned_coder/0_GPTSingleHead` which is exactly the fine-tuned version as provided in Ready-to-go Interaction.
+2. Start fine-tuning model: `python train.py --use_csn_data True` 
 
 \* For more params setting of training, `python train.py -h`
 
@@ -141,15 +158,16 @@ private static int CountCharacters(String str) {
 \* Although some generated examples look good, it needs to take a grain of salt to judge the model's actual performance. The model may simply **"remembers"** existing code in the training set well.
 
 ### TODO list
-- Expand the dataset (and construct the dataset more carefeully) and increase context window. Try larger generative models like GPT-2 large or even [GPT-3 variants](https://arxiv.org/abs/2005.14165) as proposed recently if the computational resources are allowed.
+- Expand the dataset (and construct the dataset more carefeully) and increase context window. Try larger generative models like GPT-2 large or even [GPT-3 variants](https://arxiv.org/abs/2005.14165) as proposed recently if the computational resources are allowed. integrate the <s>CodeSearchNet dataset</s> and the Python150k (https://eth-sri.github.io/py150) dataset.
 - Remove overlapping between training examples and dev examples for contamination studies. That says, to what extent the model memorizes examples rigidly or [at surface heuristics level during training](https://arxiv.org/pdf/1902.01007.pdf).
-- Try some adversarial examples (more complicated for model's reasoning capability testing purpose) to test the robustness of the model.
+- Try some adversarial examples (more complicated for model's reasoning capability deving purpose) to dev the robustness of the model.
 - Integrate this into real-life use case such as a code editor - [Sublime Text](https://www.sublimetext.com/), where a threshold of joint probability may need to be studied for code snippet recommendations.
 - Try some ideas of location-aware code generation. For example, if a human coder is sitting writing a comment, the autocoder should be aware of the coder's context (left and right if available) to help complete the corresponding content.
 - Model size and inference efficiency is a problem in real-life use cases.
 - Do research in this problem domain to grab a general idea of what work has done in the literature for this particular problem.
-
-
-
+- Train on architectures such as the 'Longformer' and the 'Reformer'
+- Experiment to understand if the ideas present in this paper (https://arxiv.org/pdf/1902.09697.pdf) apply also to our use-case 
+- Be certain that the duplicates have been removed from the CodeSearchNet dataset
+- Train using the SrcCodeDataset with the linux kernel source for C and C++
 ### Extra notes
-* For mutli-GPU training, it only works when torch==1.4.0. It will be not working when torch==1.5.0. No idea so far how to fix this issue.
+* in this system the dataset is split into the "train" and "dev" datasets, where dev is the testing dataset and train is the training dataset. 

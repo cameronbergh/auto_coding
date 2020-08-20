@@ -179,7 +179,7 @@ class ModelTrainer():
         :param seed:random seed for reproducibility
         :param data_loader_shuffle:Whether to shuffle data_loader of training dataset and dev dataset after epoch ends
         :param device: device for training, None or gpu for gpu training, cpu for gpu training
-        :param dev_batch_size: development batch size, usually larger than training batch size due to no grads calculation and hence less burden on memory
+        :param dev_batch_size: dev batch size, usually larger than training batch size due to no grads calculation and hence less burden on memory
         :param n_gpu: number of gpus for training
         :param report_model:if report model's structure and number of trainable params in logging
         :param per_gpu_train_batch_size: what it means literally
@@ -197,7 +197,7 @@ class ModelTrainer():
         self.down_layer = down_layer
         assert output_path != None
         output_path = os.path.join("tmp", output_path)
-        # os.makedirs(output_path,exist_ok=True)
+        os.makedirs(output_path, exist_ok=True)
         if restore_training:
             if not os.listdir(output_path):
                 raise ValueError(f"no checkpoint found in {output_path}")
