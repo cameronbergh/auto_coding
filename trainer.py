@@ -271,7 +271,7 @@ class ModelTrainer():
         self._dev_batch_size = dev_batch_size if dev_batch_size != -1 else self._train_batch_size
 
         if isinstance(train_dataset, data.IterableDataset):
-            self._train_dataloader = DataLoader(train_dataset, batch_size=None)
+            self._train_dataloader = DataLoader(train_dataset, batch_size=None, num_workers=4) #todo: add this to argparser
             self._steps_per_epoch = len(self._train_dataloader.dataset)
         else:
             self._train_dataloader = DataLoader(train_dataset, shuffle=data_loader_shuffle,
@@ -279,7 +279,7 @@ class ModelTrainer():
             self._steps_per_epoch = len(self._train_dataloader)
 
         if isinstance(dev_dataset, data.IterableDataset):
-            dev_dataloader = DataLoader(dev_dataset, batch_size=None)
+            dev_dataloader = DataLoader(dev_dataset, batch_size=None, num_workers=4) #todo: add this to argparser
         else:
             dev_dataloader = DataLoader(dev_dataset, shuffle=data_loader_shuffle, batch_size=self._dev_batch_size)
 

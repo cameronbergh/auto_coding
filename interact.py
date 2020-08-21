@@ -4,9 +4,9 @@ import argparse
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Params')
-    parser.add_argument('--model_path', type=str, default="tmp/model/distilgpt2_fine_tuned_coder/0_GPTSingleHead/",
+    parser.add_argument('--model_path', type=str, default="model/distilgpt2_polyglot/0_GPTSingleHead/",
                         help='the path to load fine-tuned model')
-    parser.add_argument('--max_length', type=int, default=256,
+    parser.add_argument('--max_length', type=int, default=64,
                         help='maximum length for code generation')
     parser.add_argument('--temperature', type=float, default=0.7,
                         help='temperature for sampling-based code geneeration')

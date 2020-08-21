@@ -95,9 +95,12 @@ class DatasetFromPandas(Dataset):
         segments = []
         for i in range(len(encoded) // self.stride):
             seg = encoded[i * self.stride:i * self.stride + self.segment_len]
-            segments.append({"token_ids": seg, "label": lang})
+            #there was a very rare case where the segment array would be empty so we do this check here
+            if len(seg) > 0: segments.append({"token_ids": seg, "label": lang})
 
-        #if there is more than one sequence made, then pick a random one
+        assert len(segments) > 0 #there was a very rare case where the segment array would be empty so we do this check here
+
+        #if there is more than one sequence made, then pick a random sample from the set
         # (this is done to save memory) #todo: prove doing it this way is good.
         if len(encoded) // self.stride == 0:
             item = [encoded]
@@ -185,36 +188,43 @@ if __name__ == '__main__':
 
     from model import GPTSingleHead
 
+    #set the logger to only report ERROR level messages, though, if there is any bizarre behavior this should be commented out
+    logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
+
     MODEL_MAP = {"distilgpt2": "distilgpt2", "gpt2": "gpt2", "gpt2_medium": "gpt2-medium",
                  "gpt2_large": "gpt2-large"}
 
     model = GPTSingleHead(MODEL_MAP['distilgpt2'], max_seq_length=256)
-    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<ruby>", "<javascript>"]})
-
+    model.add_special_words({"pad_token": "<pad>",
+                             "additional_special_tokens": ["<python>", "<javascript>", "<java>", "<php>", "<ruby>",
+                                                           "<go>", "<c>", "<h>", "<sh>"]})
 
     #languages = ['javascript', 'ruby']
-    languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']
+    languages = ['h', 'c', 'sh', 'python', 'javascript', 'java', 'php', 'ruby', 'go', ]
 
-
-    dev_ratio = 0.1
-
+    dev_ratio = 0.001
 
     df = load_pickles(languages)
-    df = shuffle_dataset(df)
-    train_df, dev_df = split_data(df, dev_ratio)
+    #df = shuffle_dataset(df)
+    #train_df, dev_df = split_data(df, dev_ratio)
 
-    train_dataset = DatasetFromPandas(train_df, model)
-    dev_dataset = DatasetFromPandas(dev_df, model)
+    train_dataset = DatasetFromPandas(df, model)
+    # dev_dataset = DatasetFromPandas(dev_df, model)
 
-    train_dataset = DatasetFromPandas(train_df, model)
+    batch_size = 10
 
+    dataloader = DataLoader(train_dataset, batch_size=batch_size, num_workers=1)
 
-    for i in range(0, 100):
-        item = train_dataset.__getitem__(i)
+    print(len(train_dataset))
+
+    i = 0
+    for i in tqdm(range(0, (len(train_dataset) // batch_size))):
+        item = next(iter(dataloader))
+
         #print(item)
-        print(model.tokenizer.decode(item['input_ids'], skip_special_tokens=False))
-        print(len(item['input_ids']))
-        print(i)
+        # print(model.tokenizer.decode(item['input_ids'], skip_special_tokens=False))
+        # print(len(item['input_ids']))
+        # print(i)
 
 
 

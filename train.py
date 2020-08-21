@@ -12,11 +12,6 @@ logger = logging.getLogger(__name__)
 #todo: make this a commandline param
 logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
 
-
-
-
-
-
 MODEL_MAP = {"distilgpt2": "distilgpt2", "gpt2": "gpt2", "gpt2_medium": "gpt2-medium",
              "gpt2_large": "gpt2-large"}
 
@@ -100,9 +95,9 @@ if __name__ == '__main__':
 
         dev_ratio = 0.01
 
-        #languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go', 'c', 'h', 'sh']
-        languages = ['c', 'h', 'sh']
-        languages = ['sh',]
+        languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go', 'c', 'h', 'sh']
+        # languages = ['c', 'h', 'sh']
+        # languages = ['sh',]
 
         df = load_pickles(languages)
         df = shuffle_dataset(df)
