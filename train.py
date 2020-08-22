@@ -1,3 +1,45 @@
+"""
+
+notes from cameronbergh:
+
+    - instead of using the train/test terminology, this project describes the datasets as train/dev.
+
+    - I have added a dataset object which adds data from the CodeSearchNet dataset and also C code from the linux kernel
+     im naming it the "csnl_dataset" in this program.
+
+     -todo: the learning rate scheduler is too aggressibe for the csnl_dataset, find a better way.
+
+     -to invoke the cnsl_dataset i have added some cmd arguments:
+        --use_csnl_data and --csnl_data_dev_ratio 0.005
+
+    -the csnl_dataset is shuffled at runtime, every time, which is different from the original code. it is also
+     shuffled before the train/test split
+
+    -the ".h" files from the linux kernel are actually C code but i thought it may be better to have the model
+     learn them as a separate category.
+     todo: experiment to find out if it performs better with mixed c/h files or with separated c/h files.
+
+    -for the smaller model im going to exclude 's' files since those are assembly language and
+    they look incomprehensible to me. though i can imagine some scenarios where they might be useful.
+
+    -also, the <php> tag looks like something that might appear in places we didn't want it to.  <?php> is a legitimate
+     tag in php, so i wonder if <php> appears  anywhere in the dataset.
+     #todo: scan the dataset for "<php>" or any special tokens?
+
+    - I didnt want to break the existing code so I made a argument --use_csnl_data which
+     means the model will be trained on codesearchnet and also data from the linux kernel
+     there was some broken code to do fuzzy matching and removing of duplicates from the dataset, but i removed it
+     because it was broken and the duplication was minimal. todo: implement fuzzy matching dupe remover
+
+    - the original code would take each code file and split it into some overlapping sequences with a stride of 10
+     (not sure how to describe that) but that method would require terabytes of disk or memory. so i changed it to
+     generate the sequences on-the-fly and pick a random one. ive seen this technique used in other projects but in
+     this use-case i can imagine it might cause some problems.
+        for example: the C and H files are often very large, while the codesearchnet files are much smaller,
+        so maybe it will take many epochs for the model to learn the entire file? but maybe that's a good thing.
+
+"""
+
 import argparse, os
 import logging
 
@@ -9,15 +51,11 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-#todo: make this a commandline param
-logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
-
 MODEL_MAP = {"distilgpt2": "distilgpt2", "gpt2": "gpt2", "gpt2_medium": "gpt2-medium",
              "gpt2_large": "gpt2-large"}
-
 from model import GPTSingleHead
 from trainer import ModelTrainer
-from data import DatasetFromPandas, SrcCodeDataset, load_pickles, split_data, shuffle_dataset
+from data import CSNL_Dataset, SrcCodeDataset, load_pickles, split_data, shuffle_dataset
 
 from evaluate import SingleCLMEvaluator
 
@@ -25,8 +63,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Hyper params')
     parser.add_argument('--model_select', type=str, default="distilgpt2",
                         help='model select from distilgpt2, gpt2_medium, gpt2, or gpt2_large')
-    parser.add_argument('--use_csn_data', type=bool, default=False,
-                        help='dataset name whatever name you put into the ./dataset directory (by default: source_code)')
     parser.add_argument('--dataset_name', type=str, default="source_code",
                         help='dataset name whatever name you put into the ./dataset directory (by default: source_code)')
     parser.add_argument('--per_gpu_train_batch_size', type=int, default=6,
@@ -63,6 +99,15 @@ if __name__ == '__main__':
     parser.add_argument(
         "--with_wandb", action="store_true", help="Train with wandb tracking."
     )
+    parser.add_argument(
+        "--less_verbose", action="store_true", help="set logger to report only Errors. (not warnings)"
+    )
+    parser.add_argument('--csnl_dev_ratio', type=float, default=0.005,
+                        help='ratio of dev (validation) data for the splitter')
+    parser.add_argument(
+        "--use_csnl_data", action="store_true",
+        help="use camerons extended code dataset which includes CodeSearchNet and data from the linux kernel"
+    )
 
     args = parser.parse_args()
     logger.info(f"args: {args}")
@@ -72,41 +117,41 @@ if __name__ == '__main__':
     logger.info("{} for dataset in: {}".format(output_path, dataset_folder))
     logger.info(
         f"*****************model select: {args.model_select} for code generation using dataset: {args.dataset_name}******************")
+
     # add more params for wandb
     args.wandb_run_name = output_path
 
-    #initialize model by model name (the same as used in transformers lib)
+    # initialize model by model name (the same as used in transformers lib)
     model = GPTSingleHead(MODEL_MAP[args.model_select], max_seq_length=args.max_seq_length)
 
+    # add special tokens for controlling code generation by different programming language
+    model.add_special_words({"pad_token": "<pad>",
+                             "additional_special_tokens": ["<python>", "<javascript>", "<java>", "<php>", "<ruby>",
+                                                           "<go>", "<c>", "<h>", "<sh>"]})
 
-                        # for the smaller model im going to exclude 's' files since those are assembly language and
-                        # that looks incomprehensible to me.
+    # this sets the logger to report only errors and not the unneeded warnings that we get when doing tokenizing
+    if args.less_verbose:
+        logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
 
-    #add special tokens for controlling code generation by different programming language
-    model.add_special_words({"pad_token": "<pad>", "additional_special_tokens": ["<python>", "<javascript>", "<java>", "<php>", "<ruby>", "<go>", "<c>", "<h>", "<sh>"]})
+    if args.use_csnl_data: #invoke the cnsl_dataset
+        print('using csnl dataset')
 
-                        #todo: the <php> tag looks like something that might appear in places we didnt want it to. like <?php>
-                        #   maybe we should change it to something like <{php}> or whatever
+        # get the cmd arg for cnsl_dataset's train/dev split
+        csnl_dev_ratio = args.csnl_dev_ratio
 
-    if args.use_csn_data:
-
-        print('using codesearchnet dataset')
-        # todo: put this in the argparser
-
-        dev_ratio = 0.01
-
+        #specify the languages to load and look for, note: we have left out .pl and .s files
         languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go', 'c', 'h', 'sh']
-        # languages = ['c', 'h', 'sh']
-        # languages = ['sh',]
 
+        #load the pickle files created by the convert_csnl script and then shuffle them
         df = load_pickles(languages)
         df = shuffle_dataset(df)
 
         # do the train/dev split
-        train_df, dev_df = split_data(df, dev_ratio)
-        train_dataset = DatasetFromPandas(train_df, model)
-        dev_dataset = DatasetFromPandas(dev_df, model)
-    else:
+        train_df, dev_df = split_data(df, csnl_dev_ratio)
+        train_dataset = CSNL_Dataset(train_df, model)
+        dev_dataset = CSNL_Dataset(dev_df, model)
+
+    else: #if we want to use use the original dataset by CongCongWang
 
         print('using jsonl dataset')
 
@@ -114,10 +159,9 @@ if __name__ == '__main__':
         file_path = dataset_folder + "train.jsonl"
         train_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "train"))
 
-        # load developlemt dataset
+        # load development (dev) dataset
         file_path = dataset_folder + "dev.jsonl"
         dev_dataset = SrcCodeDataset(file_path, model, cache_path=os.path.join(".cache", output_path, "dev"))
-
 
     # initialize development evaluator
     dev_evaluator = SingleCLMEvaluator()
@@ -143,5 +187,5 @@ if __name__ == '__main__':
                                  seed=args.seed,
                                  data_loader_shuffle=True,
                                  wandb_config=args if args.with_wandb else None)
-    #start training
+    # start training
     model_trainer.train()

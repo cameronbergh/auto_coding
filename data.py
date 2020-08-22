@@ -1,18 +1,17 @@
-from torch.utils.data import Dataset, IterableDataset, DataLoader
-import os, pickle, json
+import json
 import logging
+import os
+import pickle
+import random
 
 import pandas as pd
-
 import sklearn.model_selection as model_selection
+from dpu_utils.utils import RichPath
+from torch.utils.data import Dataset, DataLoader
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
-from dpu_utils.utils import RichPath
-
-from tqdm import tqdm
-
-import random
 
 def jsonl_to_df(input_folder: RichPath) -> pd.DataFrame:
     "Concatenates all jsonl files from path and returns them as a single pandas.DataFrame ."
@@ -23,33 +22,35 @@ def jsonl_to_df(input_folder: RichPath) -> pd.DataFrame:
     assert files, 'There were no jsonl.gz files in the specified directory.'
     print(f'reading files from {input_folder.path}')
     for f in tqdm(files, total=len(files)):
-        dfs.append(pd.DataFrame(list(f.read_as_jsonl(error_handling=lambda m,e: print(f'Error while loading {m} : {e}')))))
+        dfs.append(
+            pd.DataFrame(list(f.read_as_jsonl(error_handling=lambda m, e: print(f'Error while loading {m} : {e}')))))
     return pd.concat(dfs)
 
+
+# loads picklled dataframes from disk, appends them all into one big dataframe
 def load_pickles(languages):
     df = pd.DataFrame()
     print('loading pickles...')
     for lang in languages:
-
         path = 'dataset/' + lang + '.pkl'
         print('reading ' + path)
-        new_df = pd.read_pickle(path)  # todo: coerce to utf-8? is that done automatically here?
+        new_df = pd.read_pickle(path)
 
         df = df.append(new_df)
     return df
 
+
 def shuffle_dataset(df):
+    """ takes all the code files in pandas and shuffles them """
     print('shuffling dataset')
     # this means, return all rows, in random order. SHUFFLE
     # reset_index prevents pandas from creating a new column with the old index
     df = df.sample(frac=1).reset_index(drop=True)
     return df
 
-def split_data(df, validation_ratio=0.01):
 
-    """
-    does the train train/dev validation split
-    """
+def split_data(df, validation_ratio=0.01):
+    """ performs the train train/dev split """
     train, dev = model_selection.train_test_split(df, test_size=validation_ratio)
 
     print('training set size ' + str(train.shape))
@@ -57,11 +58,12 @@ def split_data(df, validation_ratio=0.01):
 
     return train, dev
 
-class DatasetFromPandas(Dataset):
+
+class CSNL_Dataset(Dataset):
     def __init__(self, dataframe, model, segment_len=254, stride=10):
         """
-        A dataset example where the class is embedded in the file names
-        This data example also does not use any torch transforms
+        We call this the CSNL_Dataset,
+        it is made of data from codesearchnet and some code from the linux kernel
         """
         self.df = dataframe
         self.current_iteration = 0
@@ -78,46 +80,51 @@ class DatasetFromPandas(Dataset):
         return item
 
     def __getitem__(self, index):
+
         """
         gets specified dataset item and then
         segments and picks a random segment
-        this is done to save memory
         """
 
-        item = self.df.iloc[index]
-        code = item['code']
-        lang = item['language']
+        while True:
 
-        #tokenize the code
-        encoded = self.model.tokenizer.encode(code)
+            item = self.df.iloc[index]
+            code_tokens = item['code']
+            lang = item['language']
 
-        #make it into a bunch of properly sized sequences
-        segments = []
-        for i in range(len(encoded) // self.stride):
-            seg = encoded[i * self.stride:i * self.stride + self.segment_len]
-            #there was a very rare case where the segment array would be empty so we do this check here
-            if len(seg) > 0: segments.append({"token_ids": seg, "label": lang})
+            # tokenize the code
+            #encoded = self.model.tokenizer.encode(code)
 
-        assert len(segments) > 0 #there was a very rare case where the segment array would be empty so we do this check here
+            # make the code sample into a bunch of properly sized sequences
+            segments = []
+            for i in range(len(code_tokens) // self.stride):
+                seg = code_tokens[i * self.stride:i * self.stride + self.segment_len]
 
-        #if there is more than one sequence made, then pick a random sample from the set
-        # (this is done to save memory) #todo: prove doing it this way is good.
-        if len(encoded) // self.stride == 0:
-            item = [encoded]
-        else:
-            item = random.choice(segments)
+                # there was a very rare case where the segment array would be empty so we do this check here
+                if len(seg) > 0:
+                    segments.append({"token_ids": seg, "label": lang})
 
-        #add special tokens
-        encoded_plus = self.model.tokenizer.encode_plus(
-            self.model.tokenize("<" + str(lang) + ">") + item['token_ids'] + [self.model.eos_token_id])
+            assert len(segments) > 0    # there was a very rare bug where the
+                                        # segment array would be empty so we do this check here
 
-        # remove the attention mask data from the dict
-        del encoded_plus.data['attention_mask']
+            # if there is more than one sequence made, then pick a random sample from the set
+            if len(code_tokens) // self.stride == 0:
+                item = [code_tokens]
+            else:
+                item = random.choice(segments)
 
-        return encoded_plus.data
+            # add special tokens
+            encoded_plus = self.model.tokenizer.encode_plus(
+                self.model.tokenize("<" + str(lang) + ">") + item['token_ids'] + [self.model.eos_token_id])
+
+            # remove the attention mask data from the dict
+            del encoded_plus.data['attention_mask']
+
+            return encoded_plus.data
 
     def __len__(self):
         return self.df.shape[0]
+
 
 class SrcCodeDataset(Dataset):
     def __init__(self, file_path, model, cache_path=None):
@@ -180,40 +187,36 @@ class SrcCodeDataset(Dataset):
 
                 self.inputs.append(encoded_plus.data)
 
-if __name__ == '__main__':
-
-    """ 
-    this is for unit testing? 
-    """
+def test_csnl_dataset_object():
+    ###################################################
+    # THIS CODE IS FOR TESTING THE CSNL_DATASET #######
+    ###################################################
 
     from model import GPTSingleHead
 
-    #set the logger to only report ERROR level messages, though, if there is any bizarre behavior this should be commented out
+    # set the logger to only report ERROR level messages, though, if there is any bizarre behavior this should be commented out
     logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
 
-    MODEL_MAP = {"distilgpt2": "distilgpt2", "gpt2": "gpt2", "gpt2_medium": "gpt2-medium",
-                 "gpt2_large": "gpt2-large"}
-
-    model = GPTSingleHead(MODEL_MAP['distilgpt2'], max_seq_length=256)
+    model = GPTSingleHead('distilgpt2', max_seq_length=256)
     model.add_special_words({"pad_token": "<pad>",
                              "additional_special_tokens": ["<python>", "<javascript>", "<java>", "<php>", "<ruby>",
                                                            "<go>", "<c>", "<h>", "<sh>"]})
 
-    #languages = ['javascript', 'ruby']
+    # languages = ['javascript', 'ruby']
     languages = ['h', 'c', 'sh', 'python', 'javascript', 'java', 'php', 'ruby', 'go', ]
 
-    dev_ratio = 0.001
+    # dev_ratio = 0.001
 
     df = load_pickles(languages)
-    #df = shuffle_dataset(df)
-    #train_df, dev_df = split_data(df, dev_ratio)
+    # df = shuffle_dataset(df)
+    # train_df, dev_df = split_data(df, dev_ratio)
 
-    train_dataset = DatasetFromPandas(df, model)
-    # dev_dataset = DatasetFromPandas(dev_df, model)
+    train_dataset = CSNL_Dataset(df, model)
+    # dev_dataset = CSNL_Dataset(dev_df, model)
 
     batch_size = 10
 
-    dataloader = DataLoader(train_dataset, batch_size=batch_size, num_workers=1)
+    dataloader = DataLoader(train_dataset, batch_size=batch_size, num_workers=4)
 
     print(len(train_dataset))
 
@@ -221,11 +224,16 @@ if __name__ == '__main__':
     for i in tqdm(range(0, (len(train_dataset) // batch_size))):
         item = next(iter(dataloader))
 
-        #print(item)
-        # print(model.tokenizer.decode(item['input_ids'], skip_special_tokens=False))
-        # print(len(item['input_ids']))
-        # print(i)
+        print(item)
+
+        item = item['input_ids'] # get list of tensors
+
+        for thing in item:
+            print(list(thing))
+            print(model.tokenizer.decode(item['input_ids'], skip_special_tokens=False))
+            print(i)
 
 
-
+if __name__ == '__main__':
+    test_csnl_dataset_object()
 

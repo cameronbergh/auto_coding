@@ -15,6 +15,7 @@ if __name__ == '__main__':
     )
 
     langs = ["<python>", "<javascript>", "<java>", "<php>", "<ruby>", "<go>", "<c>", "<h>", "<sh>"]
+    #langs = ["<python>", "<javascript>", "<java>", "<php>", "<ruby>", "<go>"]
 
     args = parser.parse_args()
 
@@ -26,11 +27,12 @@ if __name__ == '__main__':
     if args.use_cuda:
         model.to("cuda")
 
-    # now the fine-tunned model supports two programming languages, namely, python and java
     def lang_select():
         lang = ""
         while lang not in ["python", "javascript", "java", "php", "ruby", "go", "c", "h", "sh"]:
+        #while lang not in ["python", "javascript", "java", "php", "ruby", "go"]:
             print('Enter the programming language you prefer (python, javascript, java, php, ruby, go, c, h, sh)')
+            #print('Enter the programming language you prefer (python, javascript, java, php, ruby, go)')
             lang = input(">>> ").lower()
         return lang
 
