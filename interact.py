@@ -4,7 +4,7 @@ import argparse
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Params')
-    parser.add_argument('--model_path', type=str, default="model/distilgpt2_079/0_GPTSingleHead/",
+    parser.add_argument('--model_path', type=str, default="model/distilgpt2_fine_tuned_coder/0_GPTSingleHead/",
                         help='the path to load fine-tuned model')
     parser.add_argument('--max_length', type=int, default=64,
                         help='maximum length for code generation')
@@ -15,7 +15,7 @@ if __name__ == '__main__':
     )
 
     langs = ["<python>", "<javascript>", "<java>", "<php>", "<ruby>", "<go>", "<c>", "<h>", "<sh>"]
-    #langs = ["<python>", "<javascript>", "<java>", "<php>", "<ruby>", "<go>"]
+
 
     args = parser.parse_args()
 
@@ -30,9 +30,9 @@ if __name__ == '__main__':
     def lang_select():
         lang = ""
         while lang not in ["python", "javascript", "java", "php", "ruby", "go", "c", "h", "sh"]:
-        #while lang not in ["python", "javascript", "java", "php", "ruby", "go"]:
+
             print('Enter the programming language you prefer (python, javascript, java, php, ruby, go, c, h, sh)')
-            #print('Enter the programming language you prefer (python, javascript, java, php, ruby, go)')
+
             lang = input(">>> ").lower()
         return lang
 
