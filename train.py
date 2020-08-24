@@ -1,6 +1,6 @@
 
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="1,2"
+#os.environ["CUDA_VISIBLE_DEVICES"]="0,1"
 
 
 """
@@ -103,7 +103,7 @@ if __name__ == '__main__':
                         help='number of gpu for training')
     parser.add_argument('--visiable_device', type=str, default="0,1",
                         help='visiable gpus for training, should be consistent with n_gpu')
-    parser.add_argument('--evaluation_steps', type=int, default=1000,
+    parser.add_argument('--evaluation_steps', type=int, default=5000,
                         help='evaluation_steps')
     parser.add_argument('--wandb_project_name', type=str, default="code_generate",
                         help='project name for wandb')

@@ -11,74 +11,67 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from transformers import GPT2LMHeadModel, GPT2Tokenizer
-import argparse
+class SingleCLMEvaluator():
+    def __init__(self, dataloader: DataLoader = None,
+                 data_tag: str = "dev",
+                 device: int = None, tokenizer=None, early_stop_on: str = "perplexity"):
 
-if __name__ == '__main__':
+        if data_tag not in ["dev", "train", "test"]:
+            raise ValueError("data_tag has to be one of dev, train or test")
+        assert early_stop_on in ["loss", "perplexity"]
+        self.early_stop_on = early_stop_on
+        self.dataloader = dataloader
+        self.data_tag = data_tag
+        self.tokenizer = tokenizer
 
-    parser = argparse.ArgumentParser(description='Params')
-    parser.add_argument('--model_path', type=str, default="model/distilgpt2_079/0_GPTSingleHead/",
-                        help='the path to load fine-tuned model')
-    parser.add_argument('--max_length', type=int, default=64,
-                        help='maximum length for code generation')
-    parser.add_argument('--temperature', type=float, default=0.7,
-                        help='temperature for sampling-based code geneeration')
-    parser.add_argument(
-        "--use_cuda", action="store_true", help="inference with gpu?"
-    )
+        self.n_gpu = torch.cuda.device_count()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        if device == -1:
+            self.n_gpu = 0
+            self.device = torch.device("cpu")
 
-    langs = ["<python>", "<javascript>", "<java>", "<php>", "<ruby>", "<go>", "<c>", "<h>", "<sh>"]
+    def reset_dataloader(self, dataloader: DataLoader):
+        self.dataloader = dataloader
 
-    args = parser.parse_args()
+    def reset_logger(self, output_path):
+        pass
 
-    # load fine-tunned model and tokenizer from path
-    model = GPT2LMHeadModel.from_pretrained(args.model_path)
-    tokenizer = GPT2Tokenizer.from_pretrained(args.model_path)
+    def __call__(self, model, collate_fn, output_path: str = None, epoch: int = -1, steps: int = -1,
+                 target_names: List[str] = None, do_predict: bool = False) -> Dict[
+        str, float]:
 
-    model.eval()
-    if args.use_cuda:
-        model.to("cuda")
+        if do_predict and self.tokenizer == None:
+            raise ValueError("you are doing predict so need a tokenizer")
+        if self.dataloader is None:
+            raise ValueError(" need to set dataloader for this evaluator, call reset_dataloader()")
 
-    def lang_select():
-        lang = ""
-        while lang not in ["python", "javascript", "java", "php", "ruby", "go", "c", "h", "sh"]:
-        #while lang not in ["python", "javascript", "java", "php", "ruby", "go"]:
-            print('Enter the programming language you prefer (python, javascript, java, php, ruby, go, c, h, sh)')
-            #print('Enter the programming language you prefer (python, javascript, java, php, ruby, go)')
-            lang = input(">>> ").lower()
-        return lang
+        model.eval()
+        if epoch == -1 and steps == -1:
+            logger.info(
+                f"\nEvaluation the model on {self.data_tag} dataset")
+        else:
+            logger.info(
+                "\nEvaluation the model on " + self.data_tag + " dataset" + f" in epoch {epoch} after {steps} steps:")
 
-            # print(len(code_content))
-            # # if len(ass['code']) > 1:
+        self.dataloader.collate_fn = collate_fn
+        total_loss = 0.0
+        total_steps = 0
 
-    lang = lang_select()
+        for step, batch in enumerate(tqdm(self.dataloader, desc="evaluating")):
+            input = batch["features"]
+            # batch to device
+            for feature_name, ids in input.items():
+                input[feature_name] = ids.to(self.device)
 
-    context = ""
-    while context != "exit":
-        print(f'You are using {lang} now. Enter the context code (exit or change_lang)')
-        context = input(">>> ")
+            with torch.no_grad():
+                loss, logits = model(input)
+                loss = loss.mean()
+                total_loss += loss
 
-        if context == "change_lang":
-            lang = lang_select()
+            total_steps += 1
+        eval_loss = total_loss / total_steps
+        eval_results = {"loss": eval_loss}
 
-            print(f"You are using {lang} now. Enter the context code")
-            context = input(">>> ")
-
-        input_ids = tokenizer.encode("<" + str(lang).lower() + "> " + context, return_tensors='pt')
-
-        outputs = model.generate(input_ids=input_ids.to("cuda") if args.use_cuda else input_ids,
-                                 max_length=args.max_length,
-                                 temperature=args.temperature,
-                                 num_return_sequences=1)
-
-        print(type(outputs))
-
-        for i in range(1):
-            decoded = tokenizer.decode(outputs[i], skip_special_tokens=True)
-            print(type(decoded))
-            # ends with occurence of double new lines (to meet the convention of code completion)
-            if "\n\n" in decoded:
-                decoded = decoded[:decoded.index("\n\n")]
-                print('Generated {}: {}'.format(i, decoded))
-
-
+        perplexity = torch.exp(torch.tensor(eval_loss)).clone().detach()
+        eval_results["perplexity"] = perplexity.mean().item()
+        return eval_results
