@@ -100,7 +100,7 @@ def run(csn_root_dir):
         # df = df.sample(frac=1, random_state=None)  # shuffle order of files
 
         print('Saving data to .pkl file')
-        df.to_pickle(lang + '.pkl')
+        df.to_pickle('dataset/' + lang + '.pkl')
         del df
 
 

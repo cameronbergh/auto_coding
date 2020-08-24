@@ -16,7 +16,16 @@ notes from cameronbergh:
      shuffled before the train/test split
 
     -the ".h" files from the linux kernel are actually C code but i thought it may be better to have the model
-     learn them as a separate category.
+     learn them as a separa
+    - I have added a dataset object which adds data from the CodeSearchNet dataset and also C code from the linux kernel
+     im naming it the "csnl_dataset" in this program.
+
+     -todo: the learning rate scheduler is too aggressibe for the csnl_dataset, find a better way.
+
+     -to invoke the cnsl_dataset i have added some cmd arguments:
+        --use_csnl_data and --csnl_data_dev_ratio 0.005
+
+    -the csnl_dataset is shuffled at runtime, every time, which is diffete category.
      todo: experiment to find out if it performs better with mixed c/h files or with separated c/h files.
 
     -for the smaller model im going to exclude 's' files since those are assembly language and
@@ -141,6 +150,8 @@ if __name__ == '__main__':
 
         #specify the languages to load and look for, note: we have left out .pl and .s files
         languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go', 'c', 'h', 'sh']
+        #languages = ['python', 'javascript', 'java', 'php', 'ruby', 'go']
+        #languages = ['c', 'h', 'sh']
 
         #load the pickle files created by the convert_csnl script and then shuffle them
         df = load_pickles(languages)

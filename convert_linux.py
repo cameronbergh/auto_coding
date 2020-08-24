@@ -20,23 +20,21 @@ from dpu_utils.codeutils.deduplication import DuplicateDetector
 import os
 import argparse
 import pathlib
+
+from transformers import GPT2Tokenizer
+
 from model import GPTSingleHead
 from multiprocessing import Pool, Process, Manager, Queue
 import random
 import time
 
-
-
 import logging
-
 logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
-
-
-
 
 def divide_list(seq, num):
     #from Max Shawabkeh
     # https://stackoverflow.com/questions/2130016/splitting-a-list-into-n-parts-of-approximately-equal-length
+    # i dont need this function anymore but i like it too much to delete it.
     avg = len(seq) / float(num)
     out = []
     last = 0.0
@@ -47,7 +45,7 @@ def divide_list(seq, num):
 
     return out
 
-def process_files(filetypes_to_use, model, in_q, out_q):
+def process_files(filetypes_to_use, tokenizer, in_q, out_q ):
 
     finished = 0
     while not in_q.empty():
@@ -63,8 +61,9 @@ def process_files(filetypes_to_use, model, in_q, out_q):
             try:
                 # open each file and tokenize it
                 with open(path, "r") as f:
+
                     code_content = f.read()
-                    code_content = model.tokenizer.encode(code_content)
+                    code_content = tokenizer.encode(code_content)
 
                     # if file is too small, skip it
                     if len(code_content) < 3:
@@ -81,17 +80,14 @@ def process_files(filetypes_to_use, model, in_q, out_q):
                 print('error')
                 continue
 
-def run(path, filetypes_to_use, num_workers):
 
-    #load model to use its tokenizer #todo: there must be a better way
-    model = GPTSingleHead('distilgpt2', max_seq_length=256)
-    model.add_special_words({"pad_token": "<pad>",
-                             "additional_special_tokens": ["<python>", "<javascript>", "<java>", "<php>", "<ruby>",
-                                                           "<go>", "<c>", "<h>", "<sh>"]})
+def run(linux_path, filetypes_to_use, num_workers, model_path):
+
+    tokenizer = GPT2Tokenizer.from_pretrained(model_path)
 
     # get all filenames and paths in the linux kernel dir
     files = []
-    for root, d_names, f_names in os.walk(path):
+    for root, d_names, f_names in os.walk(linux_path):
         for f in f_names:
             files.append(os.path.join(root, f))
 
@@ -110,14 +106,13 @@ def run(path, filetypes_to_use, num_workers):
     for item in files:
         in_q.put(item)
 
-
     print(len(files))
-    del files
+    # del files
 
     #make processes to tokenize the files
     jobs = []
-    for i in range(0, 8):
-        p = Process(target=process_files, args=(filetypes_to_use, model, in_q, out_q))
+    for i in range(0, num_workers):
+        p = Process(target=process_files, args=(filetypes_to_use, tokenizer, in_q, out_q))
         jobs.append(p)
         p.start()
         print('starting thread ' + str(i))
@@ -126,25 +121,32 @@ def run(path, filetypes_to_use, num_workers):
 
     pbar = tqdm(total=file_count)
 
-
-
-
     #pause the program until all processes are finished
-    while not in_q.empty():
-        time.sleep(.1)
-        pbar.n = out_q.qsize()
-        pbar.refresh()
 
-    pbar.close()
-
-    print('files tokenized: ' + str(out_q.qsize()))
     tokenized_list = []
-    while not out_q.empty():
-        tokenized_list.append(out_q.get(block=True, timeout=1))
 
+    while True:
+        try:
+            code_content = out_q.get(block=False)
+            dictionary = {'code': code_content['code'], 'language': code_content['language']}
+            tokenized_list.append(dictionary)
+        except:
+            pbar.n = out_q.qsize()
+            pbar.refresh()
+            #print('files tokenized: ' + str(len(tokenized_list)))
+            time.sleep(1)
+
+        #if both queues are empty we are almost done!
+        if in_q.empty() and out_q.empty():
+            print('both queues empty')
+            break
+
+
+    print('making list into pandas dataframe')
     df = pd.DataFrame(tokenized_list, columns=['code', 'language'])
 
-    print(df)
+    # df.to_pickle('linux.pkl')
+    print(len(df))
 
     # print('Removing fuzzy duplicates ... this may take some time.')
     # df = remove_duplicate_code_df(df)
@@ -153,22 +155,21 @@ def run(path, filetypes_to_use, num_workers):
     for item in filetypes_to_use:
         print('locating ' + item)
         new_df = df.loc[df['language'].isin([item])]
+        new_df.reset_index(drop=True, inplace=True)
+        print(new_df)
         print('saving ' + item + '.pkl')
-        new_df.to_pickle(item + '.pkl')
-
-
-
-
-
+        new_df.to_pickle('dataset/' + item + '.pkl')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Params')
     parser.add_argument('--linux_dir', type=str, default='dataset/linux-5.9-rc1/', help='path to linux sources')
     args = parser.parse_args()
-    path = args.linux_dir
+    linux_path = args.linux_dir
 
-    filetypes_to_use = ['c', 'h', 'sh']
+    filetypes_to_use = ['sh', 'c', 'h']
 
-    num_workers = 8
+    num_workers = 7
 
-    run(path, filetypes_to_use, num_workers)
+    model_path = 'model/distilgpt2_079/0_GPTSingleHead/'
+
+    run(linux_path, filetypes_to_use, num_workers, model_path)

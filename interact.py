@@ -4,7 +4,7 @@ import argparse
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Params')
-    parser.add_argument('--model_path', type=str, default="model/distilgpt2_polyglot/0_GPTSingleHead/",
+    parser.add_argument('--model_path', type=str, default="model/distilgpt2_079/0_GPTSingleHead/",
                         help='the path to load fine-tuned model')
     parser.add_argument('--max_length', type=int, default=64,
                         help='maximum length for code generation')
@@ -36,6 +36,8 @@ if __name__ == '__main__':
             lang = input(">>> ").lower()
         return lang
 
+            # print(len(code_content))
+            # # if len(ass['code']) > 1:
 
     lang = lang_select()
 
@@ -56,10 +58,15 @@ if __name__ == '__main__':
                                  max_length=args.max_length,
                                  temperature=args.temperature,
                                  num_return_sequences=1)
+
+        print(type(outputs))
+
         for i in range(1):
             decoded = tokenizer.decode(outputs[i], skip_special_tokens=True)
+            print(type(decoded))
             # ends with occurence of double new lines (to meet the convention of code completion)
             if "\n\n" in decoded:
                 decoded = decoded[:decoded.index("\n\n")]
+                print('Generated {}: {}'.format(i, decoded))
 
-            print('Generated {}: {}'.format(i, decoded))
+
