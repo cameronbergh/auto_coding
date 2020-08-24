@@ -1,3 +1,8 @@
+
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="1,2"
+
+
 """
 
 notes from cameronbergh:
@@ -49,10 +54,6 @@ notes from cameronbergh:
 
 """
 
-import os
-
-#os.environ["CUDA_VISIBLE_DEVICES"]="1,2"
-
 import argparse, os
 import logging
 
@@ -102,7 +103,7 @@ if __name__ == '__main__':
                         help='number of gpu for training')
     parser.add_argument('--visiable_device', type=str, default="0,1",
                         help='visiable gpus for training, should be consistent with n_gpu')
-    parser.add_argument('--evaluation_steps', type=int, default=100,
+    parser.add_argument('--evaluation_steps', type=int, default=1000,
                         help='evaluation_steps')
     parser.add_argument('--wandb_project_name', type=str, default="code_generate",
                         help='project name for wandb')
@@ -115,7 +116,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--less_verbose", action="store_true", help="set logger to report only Errors. (not warnings)"
     )
-    parser.add_argument('--csnl_dev_ratio', type=float, default=0.005,
+    parser.add_argument('--csnl_dev_ratio', type=float, default=0.001,
                         help='ratio of dev (validation) data for the splitter')
     parser.add_argument(
         "--use_csnl_data", action="store_true",
