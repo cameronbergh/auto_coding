@@ -5,15 +5,15 @@
     # This code is copied and modified from the CodeSearchNet repository (https://github.com/github/CodeSearchNet)
     # CodeSearchNet is provided with the MIT License
 
-    this program, is to be used after 'download_csn.py' to convert the downloaded files into pandas files,
+    this program, is to be used after 'download_csnl_data.py' to convert the downloaded files into pandas files,
     this is done because pandas is fast and i hope to eventually use dask instead.
 
 Usage:
-    download_csn.py --dir DESTINATION_DIR
+    download_csnl_data.py --dir DESTINATION_DIR
 
     example:
-        "python download_csn.py"
-        "python download_csn.py --dir ./csn_data/"
+        "python download_csnl_data.py"
+        "python download_csnl_data.py --dir ./csnl_data/"
 
 
 Options:
@@ -107,7 +107,7 @@ def run(csn_root_dir):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Params')
-    parser.add_argument('--csn_dir', type=str, default='dataset/csn_data/',
+    parser.add_argument('--csn_dir', type=str, default='dataset/csnl_data/',
                         help='the length of each example')
     args = parser.parse_args()
     print(args)

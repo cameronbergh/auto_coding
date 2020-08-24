@@ -62,7 +62,7 @@ def split_data(df, validation_ratio=0.01):
 class CSNL_Dataset(Dataset):
     def __init__(self, dataframe, model, segment_len=254, stride=10):
         """
-        We call this the CSNL_Dataset,e
+        We call this the CSNL_Dataset,
         it is made of data from codesearchnet and some code from the linux kernel
         """
         self.df = dataframe
@@ -83,32 +83,22 @@ class CSNL_Dataset(Dataset):
 
         """
         gets specified dataset item and then
-        segments and picks a random segmentdataloader
+        segments and picks a random segment
         """
 
         while True:
 
             item = self.df.iloc[index]
-            #print(item)
-            #print(item[0])
             code_tokens = item['code']
-
-            # print(type(code_tokens))
-            # print(code_tokens)
-            # print(' ')
-
             lang = item['language']
-
-            print(lang)
 
             # make the code sample into a bunch of properly sized sequences
             segments = []
             for i in range(len(code_tokens) // self.stride):
                 seg = code_tokens[i * self.stride:i * self.stride + self.segment_len]
 
-                # there was a very rare case where dataloaderthe segment array would be empty so we do this check here
+                # there was a rare case where the segment array would be empty so we do this check here
                 if len(seg) > 0:
-                    print({"token_ids": seg, "label": lang})
                     segments.append({"token_ids": seg, "label": lang})
                 else:
                     continue
@@ -230,10 +220,7 @@ def test_csnl_dataset_object():
     for i in tqdm(range(0, (len(train_dataset) // batch_size))):
         item = next(iter(train_dataset))
 
-        #print(item)
-
         item = item['input_ids'] # get list of tensors
-        #print(item)
 
         print(model.tokenizer.decode(item, skip_special_tokens=False))
         print(i)

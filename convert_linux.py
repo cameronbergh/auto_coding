@@ -162,14 +162,15 @@ def run(linux_path, filetypes_to_use, num_workers, model_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Params')
-    parser.add_argument('--linux_dir', type=str, default='dataset/linux-5.9-rc1/', help='path to linux sources')
+    parser.add_argument('--linux_dir', type=str, default='dataset/csnl_data/linux-5.9-rc2/', help='path to linux sources')
     args = parser.parse_args()
     linux_path = args.linux_dir
 
+
     filetypes_to_use = ['sh', 'c', 'h']
 
-    num_workers = 7
+    num_workers = 1 # this must remain one due to a race-condition #todo: fix it
 
-    model_path = 'model/distilgpt2_079/0_GPTSingleHead/'
+    model_path = 'model/distilgpt2_fine_tuned_coder/'
 
     run(linux_path, filetypes_to_use, num_workers, model_path)

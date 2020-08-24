@@ -49,6 +49,10 @@ notes from cameronbergh:
 
 """
 
+import os
+
+#os.environ["CUDA_VISIBLE_DEVICES"]="1,2"
+
 import argparse, os
 import logging
 
@@ -94,9 +98,9 @@ if __name__ == '__main__':
                         help='random seed')
     parser.add_argument('--accumulation_steps', type=int, default=1,
                         help='accumulation steps if you want large batch size but can not fit in the memory allowed')
-    parser.add_argument('--n_gpu', type=int, default=1,
+    parser.add_argument('--n_gpu', type=int, default=2,
                         help='number of gpu for training')
-    parser.add_argument('--visiable_device', type=str, default="0",
+    parser.add_argument('--visiable_device', type=str, default="0,1",
                         help='visiable gpus for training, should be consistent with n_gpu')
     parser.add_argument('--evaluation_steps', type=int, default=100,
                         help='evaluation_steps')
