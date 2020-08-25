@@ -105,8 +105,9 @@ class CSNL_Dataset(Dataset):
 
             # if there is more than one sequence made, then pick a random sample from the set
             if len(code_tokens) // self.stride == 0:
-                item = code_tokens
+                item = {"token_ids": code_tokens, "label": lang}
             else:
+                #print('random segment of tokens')
                 item = random.choice(segments)
 
             # add special tokens
@@ -198,13 +199,13 @@ def test_csnl_dataset_object():
                              "additional_special_tokens": ["<python>", "<javascript>", "<java>", "<php>", "<ruby>",
                                                            "<go>", "<c>", "<h>", "<sh>"]})
 
-    # languages = ['javascript', 'ruby']
-    languages = ['h', 'c', 'sh' ]
+    #languages = ['h', 'c', 'sh']
+    languages = ['h', 'c', 'sh', 'python', 'javascript', 'java', 'php', 'ruby', 'go']
 
     # dev_ratio = 0.001
 
     df = load_pickles(languages)
-    # df = shuffle_dataset(df)
+    #df = shuffle_dataset(df)
     # train_df, dev_df = split_data(df, dev_ratio)
 
     train_dataset = CSNL_Dataset(df, model)
@@ -217,13 +218,17 @@ def test_csnl_dataset_object():
     #print(len(train_dataset))
 
     i = 0
-    for i in tqdm(range(0, (len(train_dataset) // batch_size))):
-        item = next(iter(train_dataset))
+    while True:
+    #for i in tqdm(range(0, (len(train_dataset) // batch_size))):
+
+        print('(' + str(i) + ' of ' + str(len(train_dataset)) + ')')
+        item = train_dataset.get_next()
 
         item = item['input_ids'] # get list of tensors
 
         print(model.tokenizer.decode(item, skip_special_tokens=False))
         print(i)
+        i = i +1
 
 
 if __name__ == '__main__':

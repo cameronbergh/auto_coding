@@ -79,7 +79,7 @@ if __name__ == '__main__':
                         help='model select from distilgpt2, gpt2_medium, gpt2, or gpt2_large')
     parser.add_argument('--dataset_name', type=str, default="source_code",
                         help='dataset name whatever name you put into the ./dataset directory (by default: source_code)')
-    parser.add_argument('--per_gpu_train_batch_size', type=int, default=6,
+    parser.add_argument('--per_gpu_train_batch_size', type=int, default=12,
                         help='input batch size for training')
     parser.add_argument('--dev_batch_size', type=int, default=8,
                         help='input batch size for development')
